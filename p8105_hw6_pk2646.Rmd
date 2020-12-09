@@ -7,6 +7,13 @@ output: github_document
 library(tidyverse)
 library(p8105.datasets)
 library(readr)
+library(purrr)
+library(modelr)
+library(mgcv)
+library(corrplot)
+library(polycor)
+library(ggplot2)
+
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -23,11 +30,13 @@ options(
 
 scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
+
+set.seed(1)
 ```
 
 ##Problem 1 
 
-```{r create dataset,  message = FALSE, warning = FALSE}
+```{r create dataset_1,  message = FALSE, warning = FALSE}
 homicide_df = 
   read_csv("data/homicide-data.csv", na = c("", "NA", "Unknown")) %>% 
     mutate(
@@ -88,7 +97,7 @@ homicide_df %>%
   select(city_state, term, OR, starts_with("CI"))
 ```
 
-## Make a plot of the ORs
+### Make a plot of the ORs
 
 In each of these 50 cities are male homicide victims more or less likely to have homicide resoled by arrest compared to female victims
 
@@ -101,4 +110,165 @@ models_results_df %>%
   geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper)) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
+
+## Problem 2 
+
+### Part 1 
+Read in the data 
+
+```{r create dataset_2,  message = FALSE, warning = FALSE}
+birthweight_df = 
+  read_csv("data/birthweight.csv", na = c("", "NA", "Unknown")) %>% 
+  janitor::clean_names() %>%
+  mutate(
+    sex = case_when(
+        babysex == 1 ~ "female",
+        babysex == 2 ~ "male"),
+    father_race = case_when(
+        frace == 1 ~ "White",
+        frace == 2 ~ "Black",
+        frace == 3 ~ "Asian",
+        frace == 4 ~ "Puerto Rican",
+        frace == 8 ~ "Other",
+        frace == 9 ~ "Unknown"),
+    malformations = case_when(
+        malform == 0 ~ "absent",
+        malform == 1 ~ "present"),
+    mother_race = case_when(
+        mrace == 1 ~ "White",
+        mrace == 2 ~ "Black",
+        mrace == 3 ~ "Asian",
+        mrace == 4 ~ "Puerto Rican",
+        mrace == 8 ~ "Other")
+  ) %>% 
+  mutate(
+    sex = as.factor(sex),
+    father_race = as.factor(father_race),
+    malformations = as.factor(malformations),
+    mother_race = as.factor(mother_race)
+  ) %>% 
+  select(-babysex, -frace, -malform, -mrace)
+```
+
+### Part 2 
+
+## Hypothesis
+
+I want to see what are the factors that would significantly affect birthweight of a baby length of a baby at bith. 
+
+Step 1 - There are several other factors that confounds relationship and for the purpose of this homework I am trying to fit the best model based on the variables available in this dataset. Here are some of the variables that I hypothesize based what I think are the most influencial factors to affect the relationship between birthweight and length at birth.
+
+`sex`: baby’s sex (male = 1, female = 2)
+`bhead`: baby’s head circumference at birth (centimeters)
+`blength`: baby’s length at birth (centimeteres)
+`bwt`: baby’s birth weight (grams)
+`delwt`: mother’s weight at delivery (pounds)
+`gaweeks`: gestational age in weeks
+`malformations`: presence of malformations that could affect weight (0 = absent, 1 = present)
+`mother_race`: mother’s race (1 = White, 2 = Black, 3 = Asian, 4 = Puerto Rican, 8 = Other)
+`ppwt`: mother’s pre-pregnancy weight (pounds)
+`smoken`: average number of cigarettes smoked per day during pregnancy
+
+
+Step 2 - is dropping variables that are strongly associated with other predictors (for this we check the r-squared). I know I want to keep `sex`, `smoken`, `mother_race` and `malformations` in the model.
+I check for co-linearity among other variables.
+
+### Colinearity co-matrix
+
+```{r message=FALSE, warning=FALSE}
+birthweight_df_cor =
+birthweight_df %>%
+  dplyr::select(bwt, bhead, blength, delwt, gaweeks, ppwt)
+
+  birthweight_df_cor %>%
+  cor() %>%
+  corrplot::corrplot(type = "lower",
+                     method = "square",
+                     addCoef.col = "red",
+                     diag = FALSE,
+                     number.cex = .6,
+                     tl.col = "red",
+                     tl.cex = .9,
+                     tl.srt = 45,
+                     is.corr = FALSE)
+```  
+
+From this model I can see that `bhead` is extremely colinear with `blength` so I'll remove `bhead` from the model. Similarly, `ppwt` is colinear with `gaweeks`. I'll remove `ppwt` from the model.
+
+Final fitted model - 
+
+```{r regression_1}
+model_1 = lm(bwt ~ blength + delwt + gaweeks + smoken + mother_race + sex + malformations, data = birthweight_df) %>% 
+          broom::tidy()
+```
+
+### Part 3 
+
+Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+
+```{r}
+#  birthweight_df %>% 
+#  add_residuals(model_1) %>% 
+#  add_predictions(model_1) %>% 
+#  ggplot(aes(x = pred, y = resid)) +
+#  geom_point()
+```
+
+### Part 4 
+
+Compare your model to two others:
+
+One using length at birth and gestational age as predictors (main effects only)
+One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+
+```{r regression_2}
+model_2 = lm(bwt ~ blength + gaweeks, data = birthweight_df) %>% 
+          broom::tidy()
+
+model_3 = lm(bwt ~ bhead * blength * sex, data = birthweight_df) %>% 
+          broom::tidy()
+```
+
+Cross validate the three models 
+
+```{r}
+cv_df = 
+  crossv_mc(birthweight_df, 100) %>% 
+  mutate(
+    train = map(train, as_tibble), 
+    test = map(test, as_tibble))
+```
+
+Next I’ll use mutate + map & map2 to fit models to training data and obtain corresponding RMSEs for the testing data.
+
+```{r}
+cv_df = 
+  cv_df %>% 
+  mutate(
+    model_1  = map(train, ~lm(bwt ~ blength + delwt + gaweeks + smoken + mother_race + sex + malformations, data = birthweight_df)),
+    model_2  = map(train, ~lm(bwt ~ blength + gaweeks, data = birthweight_df)),
+    model_3  = map(train, ~lm(bwt ~ bhead * blength * sex, data = birthweight_df))) %>% 
+  mutate(
+    rmse_1   = map2_dbl(model_1, test, ~rmse(model = .x, data = .y)),
+    rmse_2   = map2_dbl(model_2, test, ~rmse(model = .x, data = .y)),
+    rmse_3   = map2_dbl(model_3, test, ~rmse(model = .x, data = .y)))
+```
+
+Finally, I’ll plot the prediction error distribution for each model.
+
+```{r cross validation plots}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+From these plots we can see that the model with the lowers RSME is the 3rd model. The model I proposed is better than the second model, since it has a lower RSME than the second model. Finally we should go ahead and choose the third model.
+
+
 
