@@ -323,7 +323,7 @@ Step 4.
 ```{r}
 bootstrap_weather_df =
 weather_df %>% 
-  bootstrap(n = 10) %>% 
+  bootstrap(n = 5000) %>% 
   mutate(models = map(strap, ~lm(tmax ~ tmin, data = .x) ),
          square = map(models, broom::glance),
          results = map(models, broom::tidy)
@@ -336,13 +336,18 @@ step 6. Plot the distribution of the estimates
 Step 7. describe these in words.
 
 ```{r}
-dist_plot_1 =
+dist_plot_1_df =
 bootstrap_weather_df %>% 
   unnest(square) %>% 
   janitor::clean_names() %>% 
-  select(id, r_squared) %>%  # Step 5. produce estimates of these r-squared quantities.
+  select(r_squared)  # Step 5. produce estimates of these r-squared quantities.
+  
+dist_plot_1 =   
+  dist_plot_1_df %>% 
   ggplot(aes(x = r_squared)) +
   geom_density()
+
+dist_plot_1
 ```
 
 Step 7 description - 
@@ -376,9 +381,27 @@ Plot the distribution of the log(β̂ 0∗β̂ 1)quantitie
 dist_plot_2 = 
   dist_plot_2_df %>% 
   ggplot(aes(x = alpha_beta)) +
-  geom_density()
+  geom_density() 
+
+dist_plot_2
 ```
 
 Step 10 - description 
+
+Confidence Intervals for r-squared value 
+
+```{r}
+dist_plot_1_df %>% 
+  summarize(
+    ci_lower_r_squared = quantile(r_squared, 0.025), 
+    ci_upper_r_squared = quantile(r_squared, 0.975)) %>% 
+  knitr::kable()
+
+dist_plot_2_df %>% 
+  summarize(
+    ci_lower_log_alpha_beta = quantile(alpha_beta, 0.025), 
+    ci_upper_log_alpha_beta = quantile(alpha_beta, 0.975)) %>% 
+  knitr::kable()
+```
 
 
