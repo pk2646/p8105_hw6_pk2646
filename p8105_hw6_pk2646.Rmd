@@ -292,7 +292,7 @@ Step 1. Fit the regression model
 Step 2. Check r-sqaured for the model
 Step 3. Compute the log(β̂ 0∗β̂ 1)
 
-```{r}
+```{r single}
 #Fit regression
 bootstrap_reg = lm(tmax ~ tmin, data = weather_df)
 
@@ -320,7 +320,7 @@ bootstrap_reg %>%
 Now build a bootstrap model for 5000 samples doing everything above.
 
 Step 4.
-```{r}
+```{r bootstrap}
 bootstrap_weather_df =
 weather_df %>% 
   bootstrap(n = 5000) %>% 
@@ -334,7 +334,7 @@ weather_df %>%
 step 5. produce estimates of these r-squared quantities. 
 step 6. Plot the distribution of the estimates 
 
-```{r}
+```{r plot and df 1}
 dist_plot_1_df =
 bootstrap_weather_df %>% 
   unnest(square) %>% 
@@ -354,7 +354,7 @@ Step 7 description - From the plot we can see that the r-squared values are almo
 step 8. produce estimates of log(β̂ 0∗β̂ 1)quantities. 
 step 9. Plot the distribution of the estimates 
 
-```{r}
+```{r df 2}
 dist_plot_2_df =
 bootstrap_weather_df %>% 
   unnest(results) %>% 
@@ -375,7 +375,7 @@ mutate(
 
 Plot the distribution of the log(β̂ 0∗β̂ 1)quantitie
 
-```{r}
+```{r plot 2}
 dist_plot_2 = 
   dist_plot_2_df %>% 
   ggplot(aes(x = alpha_beta)) +
@@ -388,12 +388,13 @@ Step 10 - description - From the plot we can see that the log of alpha*beta valu
 
 Confidence Intervals for r-squared value 
 
-```{r}
+```{r confidence interval}
 dist_plot_1_df %>% 
   summarize(
     ci_lower_r_squared = quantile(r_squared, 0.025), 
     ci_upper_r_squared = quantile(r_squared, 0.975)) %>% 
   knitr::kable()
+
 
 dist_plot_2_df %>% 
   summarize(
