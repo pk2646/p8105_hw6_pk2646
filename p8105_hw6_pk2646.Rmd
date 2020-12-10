@@ -198,22 +198,22 @@ From this model I can see that `bhead` is extremely colinear with `blength` so I
 Final fitted model - 
 
 ```{r regression_1}
-model_1 = lm(bwt ~ blength + delwt + gaweeks + smoken + mother_race + sex + malformations, data = birthweight_df) %>% 
-          broom::tidy()
+model_1 = lm(bwt ~ blength + delwt + gaweeks + smoken + mother_race + sex + malformations, data = birthweight_df)
 ```
 
 ### Part 3 
 
-Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r}
-#  birthweight_df %>% 
-#  add_residuals(model_1) %>% 
-#  add_predictions(model_1) %>% 
-#  ggplot(aes(x = pred, y = resid)) +
-#  geom_point()
+  birthweight_df %>% 
+  add_residuals(model_1) %>% 
+  add_predictions(model_1) %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point()
 ```
 
+From the plot we can see that most of the values are centered around zero. From the distribution we can glean that the model fitted is appropriate. There are a few points away from zero and lie towards lower predicted error values but this is not very concerning since the majority of the points are centered around zero.
 ### Part 4 
 
 Compare your model to two others:
@@ -333,7 +333,6 @@ weather_df %>%
 
 step 5. produce estimates of these r-squared quantities. 
 step 6. Plot the distribution of the estimates 
-Step 7. describe these in words.
 
 ```{r}
 dist_plot_1_df =
@@ -350,11 +349,10 @@ dist_plot_1 =
 dist_plot_1
 ```
 
-Step 7 description - 
+Step 7 description - From the plot we can see that the r-squared values are almost normally distributed.
 
 step 8. produce estimates of log(β̂ 0∗β̂ 1)quantities. 
 step 9. Plot the distribution of the estimates 
-Step 10. describe these in words.
 
 ```{r}
 dist_plot_2_df =
@@ -386,7 +384,7 @@ dist_plot_2 =
 dist_plot_2
 ```
 
-Step 10 - description 
+Step 10 - description - From the plot we can see that the log of alpha*beta values are almost normally distributed. 
 
 Confidence Intervals for r-squared value 
 
